@@ -54,12 +54,17 @@ function extractJsonUrls(html) {
   for (const regex of patterns) {
     let match;
     while ((match = regex.exec(html))) {
-      const raw = match[0];
-      const cleaned = raw.replace(/\\\\/g, "").replace(/\\//g, "/");
-      const url = cleaned.startsWith("http")
-        ? cleaned
-        : `${BASE}${cleaned}`;
-      results.add(url);
+      try {
+        const raw = match[0];
+        const cleaned = raw.replace(/\\\\/g, "").replace(/\\\//g, "/");
+        const url = cleaned.startsWith("http")
+          ? cleaned
+          : `${BASE}${cleaned}`;
+        results.add(url);
+      } catch (error) {
+        console.error("Error parsing json url:", error?.message || error);
+        console.error(error?.stack || "");
+      }
     }
   }
 
