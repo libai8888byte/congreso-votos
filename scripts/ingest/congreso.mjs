@@ -11,6 +11,8 @@ const ENDPOINTS = {
 
 const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), "data");
 const LIMIT_VOTES = Number(process.env.LIMIT_VOTES || 50);
+const VOTE_BATCH_SIZE = Number(process.env.VOTE_BATCH_SIZE || 200);
+const SLEEP_MS = Number(process.env.SLEEP_MS || 0);
 const DRY_RUN = process.env.DRY_RUN === "1";
 
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
@@ -219,34 +221,62 @@ function voteMetaFromUrl(url) {
 
 async function ingestVotaciones() {
   const urls = await collectVoteJsonUrls();
-  const limited = urls.slice(0, LIMIT_VOTES);
+  const limited = LIMIT_VOTES > 0 ? urls.slice(0, LIMIT_VOTES) : urls;
 
-  const rows = [];
-  for (const url of limited) {
-    const raw = await fetchJson(url);
-    const meta = voteMetaFromUrl(url);
-    rows.push({
-      id: meta.id || sha1(url),
-      legislature: meta.legislature,
-      session_date: meta.sessionDate,
-      source_url: url,
-      raw
-    });
-  }
-
-  const uniqueRows = Array.from(
-    new Map(rows.map((row) => [row.id, row])).values()
-  );
-
-  await saveJson(path.join(DATA_DIR, "votaciones.json"), uniqueRows);
-
-  if (DRY_RUN) {
-    console.log(`[votaciones] ${uniqueRows.length} votos (dry run)`);
+  if (limited.length === 0) {
+    console.log("[votaciones] no se encontraron URLs");
     return;
   }
 
-  const result = await supabaseUpsert("votes_raw", uniqueRows, "id");
-  console.log(`[votaciones] ${uniqueRows.length} votos | supabase:`, result);
+  let totalInserted = 0;
+  const allRows = [];
+
+  for (let i = 0; i < limited.length; i += VOTE_BATCH_SIZE) {
+    const batch = limited.slice(i, i + VOTE_BATCH_SIZE);
+    const rows = [];
+
+    for (const url of batch) {
+      const raw = await fetchJson(url);
+      const meta = voteMetaFromUrl(url);
+      rows.push({
+        id: meta.id || sha1(url),
+        legislature: meta.legislature,
+        session_date: meta.sessionDate,
+        source_url: url,
+        raw
+      });
+
+      if (SLEEP_MS > 0) {
+        await new Promise((resolve) => setTimeout(resolve, SLEEP_MS));
+      }
+    }
+
+    const uniqueRows = Array.from(
+      new Map(rows.map((row) => [row.id, row])).values()
+    );
+
+    allRows.push(...uniqueRows);
+
+    if (!DRY_RUN) {
+      const result = await supabaseUpsert("votes_raw", uniqueRows, "id");
+      totalInserted += result.inserted || 0;
+      console.log(
+        `[votaciones] lote ${i + 1}-${i + batch.length} | supabase:`,
+        result
+      );
+    } else {
+      console.log(`[votaciones] lote ${i + 1}-${i + batch.length} (dry run)`);
+    }
+  }
+
+  await saveJson(path.join(DATA_DIR, "votaciones.json"), allRows);
+
+  if (DRY_RUN) {
+    console.log(`[votaciones] ${allRows.length} votos (dry run)`);
+    return;
+  }
+
+  console.log(`[votaciones] total insertados: ${totalInserted}`);
 }
 
 async function ingestIniciativas() {
