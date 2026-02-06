@@ -21,6 +21,15 @@ node scripts/ingest/congreso.mjs all
 node scripts/ingest/normalize.mjs
 ```
 
+## Alternativa: indexador externo (quesevota)
+
+Usa una fuente externa para descubrir URLs oficiales de votaciones y cargarlas.
+
+```bash
+QV_MAX_PAGES=309 SLEEP_MS=50 node scripts/ingest/quesevota.mjs
+QV_MAX_PAGES=309 SLEEP_MS=50 QV_INGEST=1 node scripts/ingest/quesevota.mjs
+```
+
 Opciones:
 - `LIMIT_VOTES=50` limita la cantidad de votaciones descargadas.
 - `DRY_RUN=1` evita escribir en Supabase.
