@@ -278,10 +278,17 @@ async function normalizeDeputies() {
     }
   }
 
+  const uniqueDeputies = Array.from(
+    new Map(deputies.map((row) => [row.id, row])).values()
+  );
+  const uniqueMemberships = Array.from(
+    new Map(memberships.map((row) => [row.id, row])).values()
+  );
+
   return {
-    deputies,
+    deputies: uniqueDeputies,
     parties: Array.from(parties.values()),
-    memberships
+    memberships: uniqueMemberships
   };
 }
 
@@ -342,7 +349,16 @@ async function normalizeVotes(deputyNameMap) {
     }
   }
 
-  return { votes, voteResults };
+  const uniqueVotes = Array.from(
+    new Map(votes.map((row) => [row.id, row])).values()
+  );
+  const uniqueVoteResults = Array.from(
+    new Map(
+      voteResults.map((row) => [`${row.vote_id}|${row.deputy_id}`, row])
+    ).values()
+  );
+
+  return { votes: uniqueVotes, voteResults: uniqueVoteResults };
 }
 
 async function run() {

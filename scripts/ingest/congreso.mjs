@@ -159,15 +159,19 @@ async function ingestDiputados() {
     };
   });
 
+  const uniqueRows = Array.from(
+    new Map(rows.map((row) => [row.id, row])).values()
+  );
+
   await saveJson(path.join(DATA_DIR, "diputados.json"), raw);
 
   if (DRY_RUN) {
-    console.log(`[diputados] ${rows.length} registros (dry run)`);
+    console.log(`[diputados] ${uniqueRows.length} registros (dry run)`);
     return;
   }
 
-  const result = await supabaseUpsert("deputies_raw", rows, "id");
-  console.log(`[diputados] ${rows.length} registros | supabase:`, result);
+  const result = await supabaseUpsert("deputies_raw", uniqueRows, "id");
+  console.log(`[diputados] ${uniqueRows.length} registros | supabase:`, result);
 }
 
 async function discoverVotePages() {
@@ -230,15 +234,19 @@ async function ingestVotaciones() {
     });
   }
 
-  await saveJson(path.join(DATA_DIR, "votaciones.json"), rows);
+  const uniqueRows = Array.from(
+    new Map(rows.map((row) => [row.id, row])).values()
+  );
+
+  await saveJson(path.join(DATA_DIR, "votaciones.json"), uniqueRows);
 
   if (DRY_RUN) {
-    console.log(`[votaciones] ${rows.length} votos (dry run)`);
+    console.log(`[votaciones] ${uniqueRows.length} votos (dry run)`);
     return;
   }
 
-  const result = await supabaseUpsert("votes_raw", rows, "id");
-  console.log(`[votaciones] ${rows.length} votos | supabase:`, result);
+  const result = await supabaseUpsert("votes_raw", uniqueRows, "id");
+  console.log(`[votaciones] ${uniqueRows.length} votos | supabase:`, result);
 }
 
 async function ingestIniciativas() {
