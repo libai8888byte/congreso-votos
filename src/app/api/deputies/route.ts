@@ -12,7 +12,7 @@ export async function GET(request: Request) {
 
     const results = await supabaseSelect("deputies", {
       select: "id,full_name,photo_url,profile_url",
-      full_name: `ilike.%${query}%`,
+      full_name: `ilike.*${query}*`,
       limit: "20"
     });
 
