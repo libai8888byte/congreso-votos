@@ -361,14 +361,31 @@ async function normalizeVotes(deputyNameMap) {
   return { votes: uniqueVotes, voteResults: uniqueVoteResults };
 }
 
+function buildLegislatures(memberships, votes) {
+  const items = new Map();
+  for (const row of memberships) {
+    if (!row.legislature_id) continue;
+    const id = row.legislature_id.toString();
+    items.set(id, { id, name: id });
+  }
+  for (const row of votes) {
+    if (!row.legislature_id) continue;
+    const id = row.legislature_id.toString();
+    items.set(id, { id, name: id });
+  }
+  return Array.from(items.values());
+}
+
 async function run() {
   const { deputies, parties, memberships } = await normalizeDeputies();
   const deputyNameMap = new Map(deputies.map((d) => [normalizeText(d.full_name), d.id]));
   const { votes, voteResults } = await normalizeVotes(deputyNameMap);
+  const legislatures = buildLegislatures(memberships, votes);
 
   await saveJson(path.join(OUT_DIR, "deputies.json"), deputies);
   await saveJson(path.join(OUT_DIR, "parties.json"), parties);
   await saveJson(path.join(OUT_DIR, "memberships.json"), memberships);
+  await saveJson(path.join(OUT_DIR, "legislatures.json"), legislatures);
   await saveJson(path.join(OUT_DIR, "votes.json"), votes);
   await saveJson(path.join(OUT_DIR, "vote_results.json"), voteResults);
 
@@ -377,6 +394,7 @@ async function run() {
     return;
   }
 
+  const p0 = await supabaseUpsert("legislatures", legislatures, "id");
   const p1 = await supabaseUpsert("deputies", deputies, "id");
   const p2 = await supabaseUpsert("parties", parties, "id");
   const p3 = await supabaseUpsert(
@@ -387,7 +405,7 @@ async function run() {
   const p4 = await supabaseUpsert("votes", votes, "id");
   const p5 = await supabaseUpsert("vote_results", voteResults, "vote_id,deputy_id");
 
-  console.log("[normalize] supabase:", { p1, p2, p3, p4, p5 });
+  console.log("[normalize] supabase:", { p0, p1, p2, p3, p4, p5 });
 }
 
 run().catch((error) => {
