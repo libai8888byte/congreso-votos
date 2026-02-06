@@ -110,6 +110,40 @@ async function readJson(filePath) {
   return JSON.parse(content);
 }
 
+async function supabaseSelectAll(table, select = "*", pageSize = 1000) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    throw new Error("Supabase env no configurado");
+  }
+
+  let from = 0;
+  const rows = [];
+
+  while (true) {
+    const to = from + pageSize - 1;
+    const url = `${SUPABASE_URL}/rest/v1/${table}?select=${encodeURIComponent(select)}`;
+    const res = await fetch(url, {
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        Range: `${from}-${to}`
+      }
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Supabase select failed (${table}): ${res.status} ${text}`);
+    }
+
+    const batch = await res.json();
+    if (!Array.isArray(batch) || batch.length === 0) break;
+    rows.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return rows;
+}
+
 function extractDeputyId(item) {
   const rawId = pickFirst(item, [
     ["ID_DIPUTADO"],
@@ -298,9 +332,16 @@ async function normalizeDeputies() {
 }
 
 async function normalizeVotes(deputyNameMap) {
-  const votesPath = path.join(DATA_DIR, "votaciones.json");
-  const rawList = await readJson(votesPath);
-  const rows = Array.isArray(rawList) ? rawList : rawList?.votaciones || [];
+  const useSupabaseRaw = process.env.USE_SUPABASE_RAW === "1";
+  let rows = [];
+
+  if (useSupabaseRaw) {
+    rows = await supabaseSelectAll("votes_raw", "id,legislature,session_date,source_url,raw");
+  } else {
+    const votesPath = path.join(DATA_DIR, "votaciones.json");
+    const rawList = await readJson(votesPath);
+    rows = Array.isArray(rawList) ? rawList : rawList?.votaciones || [];
+  }
 
   const votes = [];
   const voteResults = [];
