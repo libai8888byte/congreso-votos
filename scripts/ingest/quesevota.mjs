@@ -36,11 +36,24 @@ function extractVotePageLinks(html) {
 
 function extractJsonUrls(html) {
   const results = new Set();
-  const regex = /https:\/\/www\.congreso\.es\/webpublica\/opendata\/votaciones\/[^\"'\\s]+\\.json/gi;
-  let match;
-  while ((match = regex.exec(html))) {
-    results.add(match[0]);
+  const patterns = [
+    /https:\/\/www\.congreso\.es\/webpublica\/opendata\/votaciones\/[^\"'\\s]+\\.json/gi,
+    /https:\\/\\/www\\.congreso\\.es\\/webpublica\\/opendata\\/votaciones\\/[^\"'\\s]+\\.json/gi,
+    /\\/webpublica\\/opendata\\/votaciones\\/[^\"'\\s]+\\.json/gi
+  ];
+
+  for (const regex of patterns) {
+    let match;
+    while ((match = regex.exec(html))) {
+      const raw = match[0];
+      const cleaned = raw.replace(/\\\\/g, "").replace(/\\//g, "/");
+      const url = cleaned.startsWith("http")
+        ? cleaned
+        : `${BASE}${cleaned}`;
+      results.add(url);
+    }
   }
+
   return Array.from(results);
 }
 
