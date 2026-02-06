@@ -100,15 +100,15 @@ export async function GET(
 
     const alignmentPct = comparable ? Math.round((aligned / comparable) * 100) : null;
 
-    const voteIdChunks = chunkArray(voteIds, CHUNK_SIZE);
-    const votesMeta: { id: string; legislature_id: string | null }[] = [];
-    for (const chunk of voteIdChunks) {
-      const rows = await supabaseSelect("votes", {
-        select: "id,legislature_id",
-        id: buildInParam(chunk)
-      });
-      votesMeta.push(...rows);
-    }
+  const voteIdChunks = chunkArray(voteIds, CHUNK_SIZE);
+  const votesMeta: { id: string; legislature_id: string | null }[] = [];
+  for (const chunk of voteIdChunks) {
+    const rows = await supabaseSelect("votes", {
+      select: "id,legislature_id",
+      id: buildInParam(chunk.map(String))
+    });
+    votesMeta.push(...rows);
+  }
 
     const byLegislature: Record<string, number> = {};
     for (const row of votesMeta) {
