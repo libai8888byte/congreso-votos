@@ -141,16 +141,21 @@ function extractDeputyName(item) {
     pickFirst(item, [
       ["NOMBRECOMPLETO"],
       ["NOMBREYAPELLIDOS"],
-      ["NOMBRE"],
-      ["APELLIDOS"],
       ["nombreCompleto"],
-      ["nombreyapellidos"],
-      ["nombre"],
-      ["apellidos"]
+      ["nombreyapellidos"]
     ])
   );
-  if (!fullName) return "(sin nombre)";
-  return fullName;
+  if (fullName) return fullName;
+
+  const firstName = normalizeText(
+    pickFirst(item, [["NOMBRE"], ["nombre"]])
+  );
+  const lastName = normalizeText(
+    pickFirst(item, [["APELLIDOS"], ["apellidos"]])
+  );
+
+  const combined = normalizeText([firstName, lastName].filter(Boolean).join(" "));
+  return combined || "(sin nombre)";
 }
 
 function extractParty(item) {
